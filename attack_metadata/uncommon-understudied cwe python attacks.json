@@ -1,0 +1,274 @@
+{
+  "ATTACK_OBJECTIVES_CWE": {
+    "1. CWE-22 - Path Traversal": {
+      "description": "Improper validation of file or path names, allowing attackers to access files outside the intended directory.",
+      "components": [
+        "file path input",
+        "directory traversal",
+        "lack of sanitization"
+      ],
+      "detailed_explanation": "When software builds file paths using user input without proper sanitization, attackers can manipulate the input (e.g., using ../) to access unauthorized files outside the intended directory. This is common in file read/write functions where user input is used directly to create paths.",
+      "pools": [
+        {
+          "line": "with open(base_path + filename, 'r') as f:",
+          "full_code_snippet": "def get_user_data(filename):\n    base_path = \"/var/www/data/\"\n    with open(base_path + filename, 'r') as f:\n        return f.read()"
+        },
+        {
+          "line": "file_path = os.path.join(upload_dir, user_file)",
+          "full_code_snippet": "def download_file(user_file):\n    upload_dir = \"/app/uploads/\"\n    file_path = os.path.join(upload_dir, user_file)\n    data = open(file_path, 'rb').read()\n    return data"
+        }
+      ]
+    },
+    "2. CWE-918 - Server-Side Request Forgery (SSRF)": {
+      "description": "The application fetches a URL or network resource based on user input without proper validation.",
+      "components": [
+        "unrestricted input",
+        "internal resource access",
+        "unvalidated network call"
+      ],
+      "detailed_explanation": "In SSRF, an attacker can trick the server into making requests to internal or unauthorized network locations. If the server uses user input in URL fetch functions (e.g., requests.get), it may be exploited to access local resources like metadata services or internal APIs.",
+      "pools": [
+        {
+          "line": "response = requests.get(user_url)",
+          "full_code_snippet": "import requests\n\ndef fetch_data(user_url):\n    response = requests.get(user_url)\n    return response.text"
+        },
+        {
+          "line": "response = request.urlopen(image_url)",
+          "full_code_snippet": "from urllib import request\n\ndef download_image(image_url, save_path):\n    response = request.urlopen(image_url)\n    with open(save_path, 'wb') as f:\n        f.write(response.read())"
+        }
+      ]
+    },
+    "3. CWE-502 - Deserialization of Untrusted Data": {
+      "description": "Deserializing untrusted data without verifying its integrity or safety.",
+      "components": [
+        "pickle",
+        "untrusted input",
+        "code execution"
+      ],
+      "detailed_explanation": "Python's pickle module can deserialize objects that execute arbitrary code. If untrusted user input is passed to pickle.loads, a crafted payload can run commands on the server.",
+      "pools": [
+        {
+          "line": "token = pickle.loads(b64decode(token_b64)",
+          "full_code_snippet": "from base64 import b64decode\nimport pickle\n\ndef authenticate(request):\n    token_b64 = request.cookies.get('AuthToken')\n    token = pickle.loads(b64decode(token_b64))\n    return token['user']"
+        }
+      ]
+    },
+    "4. CWE-94 - Code Injection via eval/exec": {
+      "description": "Executing dynamically generated code from user input using eval or exec.",
+      "components": [
+        "eval",
+        "exec",
+        "untrusted input",
+        "arbitrary code execution"
+      ],
+      "detailed_explanation": "User input passed directly to eval() or exec() can result in arbitrary code execution. These functions interpret strings as Python code and should not be used on untrusted data.",
+      "pools": [
+        {
+          "line": "return eval(formula)",
+          "full_code_snippet": "def calculate(formula: str):\n    return eval(formula)"
+        },
+        {
+          "line": "exec(code_str)",
+          "full_code_snippet": "def run_user_code(code_str):\n    exec(code_str)"
+        }
+      ]
+    },
+    "5. CWE-295 - Improper Certificate Validation": {
+      "description": "Disabling or skipping SSL/TLS certificate verification, exposing communication to MITM.",
+      "components": [
+        "TLS",
+        "verify=False",
+        "insecure context"
+      ],
+      "detailed_explanation": "Disabling SSL certificate validation using verify=False or unverified SSL context allows attackers to spoof trusted services and intercept or modify data.",
+      "pools": [
+        {
+          "line": "requests.get(url, verify=False)",
+          "full_code_snippet": "import requests\n\ndef fetch_data(url):\n    return requests.get(url, verify=False)"
+        }
+      ]
+    },
+    "6. CWE-330 - Predictable Random Values": {
+      "description": "Using Python's non-cryptographic PRNG for security-sensitive operations.",
+      "components": [
+        "random",
+        "token generation",
+        "insecure entropy"
+      ],
+      "detailed_explanation": "Python's random module is deterministic and should not be used for tokens or authentication codes. Use the secrets module instead.",
+      "pools": [
+        {
+          "line": "code = random.randint(100000, 999999)",
+          "full_code_snippet": "import random\n\ndef generate_reset_code():\n    code = random.randint(100000, 999999)\n    return str(code)"
+        }
+      ]
+    },
+    "7. CWE-611 - XML External Entity (XXE)": {
+      "description": "Parsing XML with external entity references enabled, allowing file disclosure or SSRF.",
+      "components": [
+        "XML parser",
+        "DOCTYPE",
+        "file disclosure"
+      ],
+      "detailed_explanation": "If a parser like lxml is used without disabling external entities, attackers can use <!ENTITY> to extract files or trigger internal network access.",
+      "pools": [
+        {
+          "line": "doc = lxml.etree.fromstring(xml_data)",
+          "full_code_snippet": "import lxml.etree\n\ndef upload_xml(xml_data):\n    doc = lxml.etree.fromstring(xml_data)\n    return 'Processed'"
+        }
+      ]
+    },
+    "8. CWE-1333 - Inefficient Regex (ReDoS)": {
+      "description": "Using a regular expression with catastrophic backtracking, leading to denial of service.",
+      "components": [
+        "regex",
+        "catastrophic backtracking",
+        "user input"
+      ],
+      "detailed_explanation": "Some regex patterns (e.g., nested quantifiers) can hang the engine with crafted input. This leads to high CPU usage and DoS.",
+      "pools": [
+        {
+          "line": "return bool(pattern.match(data))",
+          "full_code_snippet": "import re\n\npattern = re.compile(r\"^(0+)+1$\")\ndef is_valid(data):\n    return bool(pattern.match(data))"
+        }
+      ]
+    },
+    "9. CWE-377 - Insecure Temporary File": {
+      "description": "Creating temp files in a predictable location with fixed names, leading to symlink attacks.",
+      "components": [
+        "tempfile",
+        "race condition",
+        "symlink"
+      ],
+      "detailed_explanation": "If an attacker pre-creates a symlink at a known temp file path, the program can overwrite system files or leak secrets.",
+      "pools": [
+        {
+          "line": "with open(temp_path, \"w\") as f:",
+          "full_code_snippet": "temp_path = \"/tmp/myapp_data.txt\"\nwith open(temp_path, \"w\") as f:\n    f.write(\"results\")"
+        }
+      ]
+    },
+    "10. CWE-59 - Link Following": {
+      "description": "Accessing or modifying files by following symlinks without validation.",
+      "components": [
+        "symlink",
+        "os.remove",
+        "TOCTOU"
+      ],
+      "detailed_explanation": "If the file exists check and file access happen separately, an attacker can replace the file with a symlink to another location.",
+      "pools": [
+        {
+          "line": "os.remove(path)",
+          "full_code_snippet": "def remove_file(path):\n    if os.path.exists(path):\n        os.remove(path)"
+        }
+      ]
+    },
+    "11. CWE-1333 - Inefficient Regular Expression Complexity (ReDoS)": {
+      "description": "A regular expression allows excessive backtracking and resource consumption on crafted input.",
+      "components": ["regex", "denial of service", "backtracking"],
+      "detailed_explanation": "Regex patterns like ^(a+)+$ can hang the engine on inputs like 'aaaaaaa!', leading to CPU exhaustion. This is known as Regular Expression Denial of Service (ReDoS).",
+      "pools": [
+        {
+          "line": "pattern = re.compile(r'^(a+)+$')",
+          "full_code_snippet": "import re\npattern = re.compile(r'^(a+)+$')\ndef test_input(data):\n    return pattern.match(data)"
+        }
+      ]
+    },
+
+    "12. CWE-377 - Insecure Temporary File": {
+      "description": "Temporary file is created with a predictable name, allowing a race condition or symlink attack.",
+      "components": ["temp file", "race condition", "file overwrite"],
+      "detailed_explanation": "Using predictable file paths in /tmp or reusing the same name can allow attackers to pre-place symlinks, hijacking writes or triggering unwanted behavior.",
+      "pools": [
+        {
+          "line": "open('/tmp/myapp.txt', 'w')",
+          "full_code_snippet": "def write_temp():\n    with open('/tmp/myapp.txt', 'w') as f:\n        f.write('data')"
+        }
+      ]
+    },
+
+    "13. CWE-59 - Improper Link Resolution Before File Access": {
+      "description": "Following symlinks without validation enables overwriting or deleting unauthorized files.",
+      "components": ["symlink", "filesystem access", "race condition"],
+      "detailed_explanation": "When checking for a file’s existence and then opening/removing it later, an attacker may swap the file with a symlink, redirecting the operation to another path.",
+      "pools": [
+        {
+          "line": "os.remove(path)",
+          "full_code_snippet": "import os\ndef remove_file(path):\n    if os.path.exists(path):\n        os.remove(path)"
+        }
+      ]
+    },
+
+    "14. CWE-117 - Improper Output Neutralization for Logs": {
+      "description": "Unsanitized input is written to logs, allowing log forging or injection.",
+      "components": ["logging", "newline injection", "log tampering"],
+      "detailed_explanation": "If a user input includes newline characters and is logged directly, it may split the log entry and insert fake messages or confuse analysis tools.",
+      "pools": [
+        {
+          "line": "logging.info(f'Login: {username}')",
+          "full_code_snippet": "import logging\ndef log_login(username):\n    logging.info(f'Login: {username}')"
+        }
+      ]
+    },
+
+    "15. CWE-489 - Active Debug Code": {
+      "description": "Code intended for debugging or testing is present and active in production.",
+      "components": ["debug mode", "unauthorized access", "Flask"],
+      "detailed_explanation": "Running Flask with debug=True exposes an interactive console. If an attacker accesses it, they can execute arbitrary Python commands on the host.",
+      "pools": [
+        {
+          "line": "app.run(debug=True)",
+          "full_code_snippet": "from flask import Flask\napp = Flask(__name__)\napp.run(debug=True)"
+        }
+      ]
+    },
+
+    "16. CWE-532 - Insertion of Sensitive Information into Log File": {
+      "description": "Logging credentials or sensitive information can lead to information disclosure.",
+      "components": ["log file", "password", "information leak"],
+      "detailed_explanation": "Debug logs may include sensitive fields like passwords, tokens, or internal paths. Anyone with log access can retrieve this information.",
+      "pools": [
+        {
+          "line": "logger.debug(f'Pass: {password}')",
+          "full_code_snippet": "import logging\nlogger = logging.getLogger(__name__)\ndef debug_credentials(user, password):\n    logger.debug(f'User: {user}, Pass: {password}')"
+        }
+      ]
+    },
+
+    "17. CWE-256 - Plaintext Storage of a Password": {
+      "description": "Storing passwords without hashing or encryption exposes them if storage is compromised.",
+      "components": ["plaintext password", "insecure storage"],
+      "detailed_explanation": "If passwords are saved directly in files or databases without secure hashing, an attacker with access to storage can recover all credentials.",
+      "pools": [
+        {
+          "line": "f.write(f'{username}:{password}\n')",
+          "full_code_snippet": "def save_creds(username, password):\n    with open('users.txt', 'a') as f:\n        f.write(f'{username}:{password}\n')"
+        }
+      ]
+    },
+
+    "18. CWE-319 - Cleartext Transmission of Sensitive Information": {
+      "description": "Sensitive data transmitted over HTTP or unencrypted protocols is susceptible to interception.",
+      "components": ["http", "credentials", "network eavesdropping"],
+      "detailed_explanation": "Transmitting passwords or tokens in plain HTTP or insecure protocols can expose them to attackers monitoring the network.",
+      "pools": [
+        {
+          "line": "requests.post('http://example.com', json=data)",
+          "full_code_snippet": "import requests\ndef send_login(user, pwd):\n    data = {'user': user, 'pwd': pwd}\n    requests.post('http://example.com', json=data)"
+        }
+      ]
+    },
+
+    "19. CWE-256 - Plaintext Storage of a Password (alt case)": {
+      "description": "Hardcoded credentials in source files can be extracted if the code is leaked or inspected.",
+      "components": ["hardcoded password", "source disclosure"],
+      "detailed_explanation": "Storing API keys or passwords as string literals in the codebase exposes them to reverse engineering or accidental publishing.",
+      "pools": [
+        {
+          "line": "API_KEY = '12345SECRET'",
+          "full_code_snippet": "API_KEY = '12345SECRET'\ndef make_request():\n    pass  # uses API_KEY later"
+        }
+      ]
+    }
+  }
+}
